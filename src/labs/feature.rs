@@ -193,6 +193,7 @@ define_features! {
     HideMenuBarIcon => labs(hide_menu_bar_icon), "hide-menu-bar-icon", Dictation, Everyone, MACOS, 20261102;
     GnomeClipboardRestore => labs(gnome_clipboard_restore), "gnome-clipboard-restore", Output, Everyone, LINUX, 20261103;
     TypedText => labs(typed_text), "typed-text", Output, Everyone, LINUX, 20261107;
+    IndicatorFollowsMouse => labs(indicator_follows_mouse), "indicator-follows-mouse", Dictation, Everyone, MACOS, 20261125;
     NotchIndicator => labs(notch_indicator), "notch-indicator", Dictation, Everyone, MACOS, 20261103;
     GnomeMeetingCapsules => labs(gnome_meeting_capsules), "gnome-meeting-capsules", Meetings, Everyone, LINUX, 20261104;
     GnomeAnnotate => labs(gnome_annotate), "gnome-annotate", Annotate, Everyone, LINUX, 20261108;

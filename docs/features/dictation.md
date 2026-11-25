@@ -1935,6 +1935,7 @@ Model advertises streaming, GPU device             // dictate.streaming
   ├── One click-through line just past the HUD, on the HUD's screen
   │   ├── macOS: beside the plate the HUD placed (under the menu bar, over the Dock,
   │   │   in the menu bar, out of the notch), on the pointer's screen
+  │   ├── Labs › Indicator follows mouse (macOS) -> HUD and live text follow the pointer; independent of the dictation shortcut (labs.md)
   │   ├── Linux, Windows: past the plate `rune_hud` draws, on the HUD's display
   │   ├── HUD hidden -> In the HUD's place at the top
   │   ├── Appears with the first words, already drawn; prewarmed, so macOS never

@@ -226,6 +226,8 @@ pub struct LabsSettings {
     pub typed_text: bool,
     /// At either visible indicator position, the HUD grows out of the notch on a screen with one (macOS).
     pub notch_indicator: bool,
+    /// The dictation indicator follows the mouse pointer (macOS).
+    pub indicator_follows_mouse: bool,
     /// With the HUD position Bottom, the plate sits `hud_bottom_gap` points
     /// above the Dock or the screen's bottom edge (macOS, Labs › HUD height).
     pub hud_height: bool,
@@ -553,6 +555,7 @@ impl Default for LabsSettings {
             gnome_clipboard_restore: false,
             typed_text: false,
             notch_indicator: false,
+            indicator_follows_mouse: false,
             hud_height: false,
             hud_bottom_gap: HUD_BOTTOM_GAP_DEFAULT,
             voice_isolation: false,

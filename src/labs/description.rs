@@ -147,6 +147,9 @@ impl Feature {
             Self::TypedText => {
                 "Run the focused app's Output steps on the text already typed in the focused field and replace it (typed_text_hotkey)"
             }
+            Self::IndicatorFollowsMouse => {
+                "Keep the dictation balloon beside the mouse pointer while recording and processing. Works with any dictation shortcut"
+            }
             Self::NotchIndicator => {
                 "On a screen with a notch, the recording indicator grows out of the notch instead of sitting below the menu bar"
             }

@@ -179,6 +179,34 @@ pub struct Content {
     pub island_spread: f64,
 }
 
+/// Places the plate below the pointer, flipping above near the bottom edge.
+/// Clamp the visible plate to this display's usable bounds; the transparent
+/// window may extend beyond them. Coordinates stay in AppKit's y-up space.
+pub fn near_pointer(screen: &Screen, content: Content, pointer: (f64, f64)) -> Placed {
+    const GAP: f64 = 20.0;
+    const MARGIN: f64 = 8.0;
+    let visible = screen.visible;
+    let half_width = (content.plate.0 / 2.0).min(visible.width / 2.0);
+    let half_height = (content.plate.1 / 2.0).min(visible.height / 2.0);
+    let inset_x = (half_width + MARGIN).min(visible.width / 2.0);
+    let inset_y = (half_height + MARGIN).min(visible.height / 2.0);
+    let x = pointer
+        .0
+        .clamp(visible.x + inset_x, visible.x + visible.width - inset_x);
+    let below = pointer.1 - GAP - half_height;
+    let y = if below - half_height >= visible.y + MARGIN {
+        below
+    } else {
+        pointer.1 + GAP + half_height
+    }
+    .clamp(visible.y + inset_y, visible.top() - inset_y);
+    Placed {
+        top_left: (x - content.window.0 / 2.0, y + content.window.1 / 2.0),
+        layout: Layout::default(),
+        over_menu_bar: false,
+    }
+}
+
 /// Places `content` on `screen`. `bottom` puts Below above the Dock at
 /// `bottom_gap` points, clamped so the plate stays inside the visible frame;
 /// the menu bar and the notch are always at the top. On a flat screen From
@@ -367,6 +395,38 @@ pub fn beside_plate(placed: &Placed, screen: &Screen, content: Content, gap: f64
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn pointer_indicator_tracks_motion_and_flips_above_the_bottom_edge() {
+        let screen = flat();
+        let first = near_pointer(&screen, CONTENT, (-1300.0, 600.0));
+        let moved = near_pointer(&screen, CONTENT, (-1200.0, 500.0));
+        assert_eq!(plate(&first), (-1300.0, 567.0));
+        assert_eq!(plate(&moved), (-1200.0, 467.0));
+        let bottom = near_pointer(&screen, CONTENT, (-1300.0, screen.visible.y));
+        assert!(plate(&bottom).1 > screen.visible.y);
+        assert_eq!(first.layout, Layout::default());
+        assert!(!first.over_menu_bar);
+    }
+
+    #[test]
+    fn pointer_indicator_stays_on_offset_displays_and_in_the_usable_frame() {
+        for screen in [flat(), notched()] {
+            for x in [screen.frame.x, screen.frame.x + screen.frame.width] {
+                for y in [screen.frame.y, screen.frame.top()] {
+                    let placed = near_pointer(&screen, CONTENT, (x, y));
+                    let (cx, cy) = plate(&placed);
+                    assert!(cx - CONTENT.plate.0 / 2.0 >= screen.visible.x);
+                    assert!(cx + CONTENT.plate.0 / 2.0 <= screen.visible.x + screen.visible.width);
+                    assert!(cy - CONTENT.plate.1 / 2.0 >= screen.visible.y);
+                    assert!(cy + CONTENT.plate.1 / 2.0 <= screen.visible.top());
+                    let local = local_rect(placed.top_left, screen.frame);
+                    assert_eq!(local.0 + screen.frame.x, placed.top_left.0);
+                    assert_eq!(screen.frame.top() - local.1, placed.top_left.1);
+                }
+            }
+        }
+    }
 
     const CONTENT: Content = Content {
         window: (320.0, 128.0),

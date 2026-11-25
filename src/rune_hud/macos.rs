@@ -396,15 +396,20 @@ impl Hud {
             &metrics,
             content,
         );
-        let placed = ears.unwrap_or_else(|| {
-            hud_placement::place(
-                tuning.placement,
-                &metrics,
-                content,
-                self.position == IndicatorPosition::Bottom,
-                crate::labs::hud_bottom_gap(),
-            )
-        });
+        let placed = if crate::labs::indicator_follows_mouse() {
+            let pointer = NSEvent::mouseLocation();
+            hud_placement::near_pointer(&metrics, content, (pointer.x, pointer.y))
+        } else {
+            ears.unwrap_or_else(|| {
+                hud_placement::place(
+                    tuning.placement,
+                    &metrics,
+                    content,
+                    self.position == IndicatorPosition::Bottom,
+                    crate::labs::hud_bottom_gap(),
+                )
+            })
+        };
         set_live_text(live_text_beside(&placed, &metrics, content, primary_top));
         // `placed` carries the display's absolute coordinates, so moving the
         // pointer to another display changes it (a mirrored set is one

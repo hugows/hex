@@ -59,6 +59,7 @@ impl Feature {
             Self::HideMenuBarIcon => "Hide menu bar icon",
             Self::GnomeClipboardRestore => "Restore clipboard on GNOME",
             Self::TypedText => "Transform typed text",
+            Self::IndicatorFollowsMouse => "Indicator follows mouse",
             Self::NotchIndicator => "Notch indicator",
             Self::GnomeMeetingCapsules => "Call recording controls on GNOME",
             Self::GnomeAnnotate => "Annotate on GNOME",
@@ -243,6 +244,9 @@ impl Feature {
             }
             Self::TypedText => {
                 "Add a shortcut that runs your Output steps on text you typed and replaces it."
+            }
+            Self::IndicatorFollowsMouse => {
+                "Keep the dictation balloon beside the mouse pointer while recording and processing. Works with any dictation shortcut"
             }
             Self::NotchIndicator => {
                 "On a screen with a notch, the recording indicator grows out of the notch instead of sitting below the menu bar"
