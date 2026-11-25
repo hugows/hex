@@ -651,6 +651,17 @@
       "title": "Delete transcript lines"
     },
     {
+      "added": "2026-11-25",
+      "group": "shortcuts",
+      "groupTitle": "Shortcuts",
+      "id": "middle-mouse-dictation",
+      "oses": [
+        "macos"
+      ],
+      "summary": "Hold the middle mouse button for half a second to start dictating, and hold again to finish. Short clicks do not toggle dictation. Mouse clicks still reach the app",
+      "title": "Middle mouse dictation"
+    },
+    {
       "added": "2026-11-07",
       "group": "shortcuts",
       "groupTitle": "Shortcuts",

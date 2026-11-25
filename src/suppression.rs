@@ -104,7 +104,6 @@ unsafe extern "C" {
     fn CGEventGetFlags(event: EventRef) -> u64;
     fn CGEventGetTimestamp(event: EventRef) -> u64;
     fn CGEventGetIntegerValueField(event: EventRef, field: u32) -> i64;
-    #[cfg(hex_capture)]
     fn CGEventGetLocation(event: EventRef) -> CgPoint;
     #[cfg(hex_capture)]
     fn CGEventKeyboardGetUnicodeString(
@@ -115,7 +114,6 @@ unsafe extern "C" {
     );
 }
 
-#[cfg(hex_capture)]
 #[repr(C)]
 #[derive(Clone, Copy)]
 struct CgPoint {
@@ -656,6 +654,12 @@ fn signed_ms(to: CaptureInstant, from: CaptureInstant) -> f64 {
     (i128::from(to.as_nanos()) - i128::from(from.as_nanos())) as f64 / 1e6
 }
 
+/// Physical state prevents a missed release from completing a stale hold.
+pub(crate) fn middle_mouse_held() -> bool {
+    // SAFETY: a read-only CoreGraphics query for the middle button.
+    unsafe { CGEventSourceButtonState(COMBINED_SESSION_STATE, 2) }
+}
+
 unsafe extern "C" fn event_callback(
     _proxy: *mut c_void,
     event_type: u32,
@@ -672,6 +676,7 @@ unsafe extern "C" fn event_callback(
         EVENT_TAP_DISABLED_BY_TIMEOUT | EVENT_TAP_DISABLED_BY_USER_INPUT
     ) {
         // The key and modifier taps share this callback.
+        crate::middle_mouse_dictation::reset();
         reenable_disabled_taps(context, event_type, "session");
         send_input(context, InputEvent::TapDisabled, CaptureInstant::ZERO);
         return event;
@@ -679,6 +684,19 @@ unsafe extern "C" fn event_callback(
     if event.is_null() {
         return event;
     }
+    // Observe without putting mouse events on the filtering tap.
+    // SAFETY: the callback supplied a valid event; fields are read only.
+    unsafe {
+        let point = CGEventGetLocation(event);
+        crate::middle_mouse_dictation::observe(
+            event_type,
+            CGEventGetIntegerValueField(event, MOUSE_EVENT_BUTTON_NUMBER),
+            CGEventGetFlags(event),
+            CaptureInstant::from_nanos(CGEventGetTimestamp(event)),
+            (point.x, point.y),
+        );
+    }
+
     // SAFETY: CoreGraphics supplied a valid event to this callback.
     if unsafe { CGEventGetIntegerValueField(event, EVENT_SOURCE_USER_DATA) }
         == crate::keyboard::SYNTHETIC_EVENT_MARKER

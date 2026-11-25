@@ -211,6 +211,8 @@ pub struct LabsSettings {
     /// A Caps Lock press starts and stops dictation, and its light follows
     /// Hex's recording and processing (macOS).
     pub caps_lock_dictation: bool,
+    /// A bare middle mouse hold toggles hands-free dictation (macOS).
+    pub middle_mouse_dictation: bool,
     /// Whether that light stays solid or blinks slowly while recording
     /// (macOS).
     pub caps_lock_light: CapsLockLight,
@@ -547,6 +549,7 @@ impl Default for LabsSettings {
             copy_dictation_audio: false,
             hide_menu_bar_icon: false,
             caps_lock_dictation: false,
+            middle_mouse_dictation: false,
             caps_lock_light: CapsLockLight::Steady,
             appearance: false,
             appearance_theme: AppearanceTheme::System,

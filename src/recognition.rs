@@ -330,6 +330,21 @@ pub fn listen(
                 &mut release,
             )?;
         }
+        if !crate::labs::middle_mouse_dictation() && hotkeys.stop_middle_mouse() {
+            handle_hotkey_action(
+                HotkeyAction::Cancel,
+                false,
+                None,
+                input.captured_through(),
+                &input,
+                &dictation_worker,
+                &mut context,
+                &input.device_name(),
+                &mut events,
+                indicator,
+                &mut release,
+            )?;
+        }
         if let Some(controls) = &controls {
             while let Ok(control) = controls.try_recv() {
                 match control {
@@ -806,6 +821,49 @@ pub fn listen(
             )?;
             if !accepted {
                 hotkeys.suspend(Shortcut::CapsLock);
+            }
+        }
+        if let Some(at) =
+            crate::middle_mouse_dictation::poll(!hotkey_capture_suspended && programmatic.is_none())
+        {
+            let dictation_recording = hotkeys.any_recording();
+            #[cfg(hex_capture)]
+            let annotate_recording = capture_host
+                .as_mut()
+                .is_some_and(|host| host.recording_since(&input).is_some());
+            #[cfg(not(hex_capture))]
+            let annotate_recording = false;
+            // Labs › Dictate while annotating leaves dictation working while
+            // a capture records, so a middle-button hold may start there too.
+            if !caps_lock_can_press(
+                dictation_recording,
+                capture_owns_dictation(annotate_recording, crate::labs::dictate_while_annotating()),
+            ) {
+                continue;
+            }
+            let Some((shortcut, action)) = hotkeys.middle_mouse_action() else {
+                continue;
+            };
+            let (raw, print) = if action == HotkeyAction::Start {
+                (false, None)
+            } else {
+                hotkeys.resolve_action(shortcut, action)
+            };
+            let accepted = handle_hotkey_action(
+                action,
+                raw,
+                print,
+                at,
+                &input,
+                &dictation_worker,
+                &mut context,
+                &input.device_name(),
+                &mut events,
+                indicator,
+                &mut release,
+            )?;
+            if !accepted {
+                hotkeys.suspend(shortcut);
             }
         }
         // The capture shortcut ignores keys while shortcuts are suspended or
@@ -1427,6 +1485,7 @@ mod tests {
             raw: None,
             extra: std::array::from_fn(|_| None),
             caps_lock: DictationHotkey::new(base, false, RuntimeHotkey::default()),
+            middle_mouse: DictationHotkey::new(base, false, RuntimeHotkey::default()),
             active: None,
             suspended: false,
         };
@@ -1476,6 +1535,7 @@ mod tests {
             raw: None,
             extra: std::array::from_fn(|_| None),
             caps_lock: DictationHotkey::new(base, false, RuntimeHotkey::default()),
+            middle_mouse: DictationHotkey::new(base, false, RuntimeHotkey::default()),
             active: None,
             suspended: false,
         };
@@ -1735,6 +1795,11 @@ mod tests {
             second: None,
             raw: None,
             extra: std::array::from_fn(|_| None),
+            middle_mouse: DictationHotkey::new(
+                base,
+                false,
+                crate::app_settings::RuntimeHotkey::default(),
+            ),
             caps_lock,
             active: None,
             suspended: false,

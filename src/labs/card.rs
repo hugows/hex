@@ -67,6 +67,7 @@ impl Feature {
             Self::AnnotateReplay => "Annotate last 15 seconds",
             Self::MeetingImport => "Import audio",
             Self::TranscriptEdits => "Delete transcript lines",
+            Self::MiddleMouseDictation => "Middle mouse dictation",
             Self::CapsLockDictation => "Caps Lock dictation",
             Self::OpenCodeInWsl => "OpenCode in WSL",
             Self::ApiProcessing => "Process API transcripts",
@@ -267,6 +268,9 @@ impl Feature {
             }
             Self::TranscriptEdits => {
                 "Select lines in a saved meeting transcript and delete them. Summaries, copies, and the Markdown file use what's left"
+            }
+            Self::MiddleMouseDictation => {
+                "Hold the middle mouse button for half a second to start dictating, and hold again to finish. Short clicks do not toggle dictation. Mouse clicks still reach the app"
             }
             Self::CapsLockDictation => {
                 "Press Caps Lock to start dictating and again to finish. Hex keeps Caps Lock off and uses its light while it records and writes the text"

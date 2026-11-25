@@ -79,6 +79,7 @@ Feature             Pane  Toggle (settings.json, hex settings)   On: what it doe
 ├── Model switch shortcut no labs.model_switch_shortcut + model_switch_hotkey + model_switch_other
 │                                        one key swaps the dictation model and language with a saved other one, and back
 │                                        (installed only); General shows its recorder and Other model row while on
+├── Middle mouse dictation no labs.middle_mouse_dictation (macOS) hold 500 ms to toggle hands-free dictation
 ├── Mouse shortcuts no    labs.mouse_shortcuts         (macOS)   mouse buttons record as shortcuts (#209)
 ├── Also pause the browser no pause_browser_media      (macOS)   pause a playing tab too, with Pause media (#301); General shows its permission row
 ├── Share dictation shortcut no share_dictation_shortcut (Windows) apps such as Discord see the shortcut too (#176)
@@ -713,6 +714,37 @@ text made inert); the golden
 and the Labs card tests in `rune_ui/tests/panes.rs`. Not observed: a real Mac
 reading a real text field, or a dictated word corrected by the text around the
 cursor; the Accessibility function itself has no host test here.
+
+Middle mouse dictation (`labs.middle_mouse_dictation`, macOS, off by default):
+a bare middle-button hold of 500 ms toggles a dedicated hands-free capture.
+Release leaves it recording; another hold or the normal dictation shortcut
+finishes and pastes, and Escape cancels. While this lab is on, Escape also
+cancels keyboard-started recordings (including hands-free locks), and Hex's
+existing event tap consumes both Escape edges regardless of the focused app.
+Before a held press becomes intentional, the existing chord grace remains.
+With the lab off, upstream keyboard cancellation rules remain unchanged. A long middle press can also finish
+a keyboard-started recording, preserving its processing mode and transcript
+destination. Keyboard finishing uses the normal shortcut as a stop gesture
+in Hold, Toggle and Double-tap only, without starting a competing capture. Finishing takes priority over a
+pending keyboard double-tap and clears that pending gesture. Short clicks
+never toggle it. Up to 6 pt of pointer movement is tolerated; a larger drag,
+modifier, other key, tap loss,
+shortcut suspension, or a disabled lab cancels a pending hold until a fresh
+press. A configured middle-button shortcut takes precedence. The originating
+shortcut retains ownership of its output even when the other input ends it. Turning this lab off cancels its
+capture. Observation uses the existing passive tap: clicks, including long
+ones, still reach the foreground app. No replay or suppression is added.
+A qualifying release also queues the
+toggle if the listener missed the hold deadline; a hold already handled
+never toggles twice.
+Checks: `middle_mouse_dictation::tests` and the MiddleMouse ownership tests
+in `recognition/hotkeys.rs`. On November 25 the user confirmed starting in
+an installed local build, but reported that a second long press and the
+keyboard shortcut did not finish. The revised reducer and keyboard fallback
+pass 189 targeted recognition/input tests locally; the second physical
+long-press was subsequently confirmed working by the user. The user later
+reported that switching between keyboard and mouse still failed; the
+bidirectional routing revision needs physical re-verification.
 
 Mouse shortcuts off: the recorder ignores mouse buttons, `hex settings`
 refuses one, and a saved mouse-button shortcut goes back to its default when

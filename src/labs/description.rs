@@ -174,6 +174,9 @@ impl Feature {
             Self::TranscriptEdits => {
                 "Select lines in a saved meeting transcript and delete them; summaries, copies, and the Markdown file use what's left"
             }
+            Self::MiddleMouseDictation => {
+                "Hold the middle mouse button for half a second to start dictating, and hold again to finish. Short clicks do not toggle dictation. Mouse clicks still reach the app"
+            }
             Self::CapsLockDictation => {
                 "Press Caps Lock to start and stop dictation; its light shows when Hex records and writes the text"
             }

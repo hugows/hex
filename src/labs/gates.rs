@@ -433,6 +433,12 @@ pub fn calendar_menu() -> bool {
     feature_on(Feature::CalendarMenu)
 }
 
+/// A bare middle-button hold toggles hands-free dictation (macOS).
+#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
+pub fn middle_mouse_dictation() -> bool {
+    feature_on(Feature::MiddleMouseDictation)
+}
+
 /// A physical Caps Lock press starts and stops dictation, and its light
 /// follows Hex's recording and processing (macOS; read by the listener on
 /// every pass and by the event tap and HID tracker through their own flag).

@@ -8,7 +8,10 @@ while the shortcut is still held past the hold threshold cancels it; a
 hands-free capture never takes Escape. Every other intentional dictation
 finishes and pastes. The other exception is a Labs › Caps Lock dictation
 capture on macOS: it is hands-free in every shortcut mode, so its own Escape
-binding cancels it even in Hold.
+binding cancels it even in Hold. With Labs › Middle mouse dictation on,
+Escape also cancels keyboard-started hands-free captures; Hex consumes its
+press and release globally so neither reaches the focused app. The lab-off
+behavior above remains unchanged.
 
 This map covers the macOS release path. Linux shares the basic journey, not
 every timing, input, or recovery guarantee; see the
@@ -47,6 +50,16 @@ Linux/X11 maps Mouse 4/5 to native buttons 8/9, skipping wheel events; the
 recorder temporarily grabs the pointer while its window has focus and releases
 it on save, cancellation, focus loss or window close. Windows waits for the
 click that opened the recorder to be released before accepting a mouse button.
+
+macOS with Labs › Middle mouse dictation on: hold the bare middle mouse
+button for 500 ms to start hands-free dictation, and hold again to finish.
+Release keeps recording; the normal dictation hotkey also finishes it, and
+Escape cancels. Short clicks do not toggle, and
+mouse events still reach the foreground app. Either input may finish the
+other's recording: a long middle press finishes a keyboard-started capture,
+and the normal keyboard shortcut finishes a mouse-started capture in every
+activation mode. Output keeps the originating capture's processing settings. See
+[labs.md](labs.md) for interruption and precedence rules and proof limits.
 
 macOS with Labs › Caps Lock dictation on (`labs.caps_lock_dictation`, off by
 default): a physical Caps Lock press toggles a hands-free dictation instead of

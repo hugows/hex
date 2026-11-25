@@ -15,6 +15,9 @@ pub(super) fn table() -> &'static HashMap<&'static str, &'static str> {
 
 #[rustfmt::skip]
 const TRANSLATIONS: &[(&str, &str)] = &[
+    ("Middle mouse dictation", "Dictée avec le bouton central"),
+    ("Hold the middle mouse button for half a second to start dictating, and hold again to finish. Short clicks do not toggle dictation. Mouse clicks still reach the app", "Maintenez le bouton central une demi-seconde pour commencer la dictée, puis à nouveau pour terminer. Les clics courts ne basculent pas la dictée. Les clics parviennent toujours à l’application"),
+
     ("macOS isn't letting Hex paste. Add Hex in System Settings > Privacy & Security > System & App Protection Override, then restart Hex.", "macOS empêche Hex de coller. Ajoutez Hex dans Réglages Système > Confidentialité et sécurité > Dérogation à la protection du système et des apps, puis relancez Hex."),
     ("Sent to", "Envoyé à"),
     ("Nothing here yet", "Rien ici pour l’instant"),

@@ -1,0 +1,6 @@
+//! Middle mouse dictation translations.
+#[rustfmt::skip]
+pub(super) const TRANSLATIONS: &[(&str, [&str; 6])] = &[
+    ("Middle mouse dictation", ["Dyktowanie środkowym przyciskiem myszy", "鼠标中键听写", "マウスの中ボタンで音声入力", "Diktat mit mittlerer Maustaste", "Dictado con el botón central", "Диктування середньою кнопкою миші"]),
+    ("Hold the middle mouse button for half a second to start dictating, and hold again to finish. Short clicks do not toggle dictation. Mouse clicks still reach the app", ["Przytrzymaj środkowy przycisk myszy przez pół sekundy, aby rozpocząć dyktowanie, i ponownie, aby zakończyć. Krótkie kliknięcia nie przełączają dyktowania. Kliknięcia nadal docierają do aplikacji", "按住鼠标中键半秒开始听写，再次按住即可结束。短按不会切换听写。鼠标点击仍会传递给应用", "マウスの中ボタンを半秒間押して音声入力を開始し、もう一度長押しして終了します。短いクリックでは切り替わりません。クリックはアプリにも届きます", "Halte die mittlere Maustaste eine halbe Sekunde, um das Diktat zu starten, und erneut, um es zu beenden. Kurze Klicks schalten das Diktat nicht um. Mausklicks erreichen weiterhin die App", "Mantén pulsado el botón central medio segundo para empezar a dictar y otra vez para terminar. Los clics cortos no activan el dictado. Los clics siguen llegando a la aplicación", "Утримуйте середню кнопку миші пів секунди, щоб почати диктування, і ще раз, щоб завершити. Короткі натискання не перемикають диктування. Натискання й далі надходять до програми"]),
+];

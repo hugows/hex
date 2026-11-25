@@ -774,6 +774,7 @@ fn rows(ui: &Ui) -> Vec<Row> {
     }
     if caps.os == super::platform::Os::Macos {
         rows.push(row(Feature::MouseShortcuts, Some(&MOUSE)));
+        rows.push(row(Feature::MiddleMouseDictation, Some(&MOUSE)));
         rows.push(row(Feature::CapsLockDictation, Some(&KEYBOARD)));
         rows.push(row(Feature::PauseBrowser, Some(&GLOBE)));
         // macOS's listener only, so Linux renders of macOS scenes leave it out.
@@ -1090,6 +1091,7 @@ fn row_key(lab: Lab) -> &'static str {
         Feature::PauseMenu => "lab-pause-menu",
         Feature::CalendarMenu => "lab-calendar-menu",
         Feature::CalendarSelectAll => "lab-calendar-select-all",
+        Feature::MiddleMouseDictation => "lab-middle-mouse-dictation",
         Feature::CapsLockDictation => "lab-caps-lock-dictation",
         Feature::GnomeClipboardRestore => "lab-gnome-clipboard-restore",
         Feature::TypedText => "lab-typed-text",

@@ -602,6 +602,11 @@ pub(super) const KEYS: &[Key] = &[
         "Labs: hide Hex's menu bar icon while nothing records; shortcuts keep working, and opening Hex again from Finder or Spotlight shows Settings (macOS)",
     ),
     key(
+        "labs.middle_mouse_dictation",
+        Kind::Bool,
+        "Labs: hold the middle mouse button for half a second to toggle hands-free dictation (macOS)",
+    ),
+    key(
         "labs.caps_lock_dictation",
         Kind::Bool,
         "Labs: a Caps Lock press starts and stops dictation hands-free, and its light shows when Hex records and transcribes; Caps Lock stays off so typing is unchanged (macOS)",

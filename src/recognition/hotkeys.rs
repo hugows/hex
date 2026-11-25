@@ -19,6 +19,7 @@ pub(super) enum Shortcut {
     Raw,
     /// Labs › Caps Lock dictation: a press toggles a hands-free capture.
     CapsLock,
+    MiddleMouse,
     /// Labs › More dictation shortcuts, by row.
     Extra(usize),
 }
@@ -27,11 +28,12 @@ impl Shortcut {
     /// Every machine in matching order: the fixed shortcuts first, then the
     /// extra dictation rows.
     fn all() -> impl Iterator<Item = Self> {
-        const FIXED: [Shortcut; 4] = [
+        const FIXED: [Shortcut; 5] = [
             Shortcut::Dictation,
             Shortcut::Second,
             Shortcut::Raw,
             Shortcut::CapsLock,
+            Shortcut::MiddleMouse,
         ];
         FIXED
             .into_iter()
@@ -54,8 +56,8 @@ pub(super) struct ActiveCapture {
 /// The dictation shortcut machines: dictation, Labs › Second dictation
 /// shortcut while it is on and bound, Dictate without processing while it is
 /// bound, Labs › More dictation shortcuts' rows, and Labs › Caps Lock
-/// dictation's machine. One records at a time, and the one that started a
-/// capture finishes or cancels it.
+/// dictation's machine. One records at a time; its owner retains output
+/// metadata when a keyboard or mouse gesture finishes it.
 pub(super) struct Hotkeys {
     pub(super) dictation: DictationHotkey,
     pub(super) second: Option<DictationHotkey>,
@@ -66,6 +68,7 @@ pub(super) struct Hotkeys {
     /// Labs › Caps Lock dictation's hands-free toggle. Its binding is empty:
     /// presses arrive from the caps-lock worker, not the shortcut matcher.
     pub(super) caps_lock: DictationHotkey,
+    pub(super) middle_mouse: DictationHotkey,
     /// Output metadata for the recording currently in progress, if any.
     pub(super) active: Option<ActiveCapture>,
     /// Whether the listener last saw shortcuts suspended, so that a capture
@@ -82,6 +85,11 @@ impl Hotkeys {
             second: None,
             raw: None,
             extra: std::array::from_fn(|_| None),
+            middle_mouse: DictationHotkey::new(
+                CaptureInstant::now(),
+                false,
+                crate::app_settings::RuntimeHotkey::default(),
+            ),
             caps_lock,
             active: None,
             suspended: false,
@@ -95,6 +103,7 @@ impl Hotkeys {
             .chain(self.second.as_mut())
             .chain(self.raw.as_mut())
             .chain(Some(&mut self.caps_lock))
+            .chain(Some(&mut self.middle_mouse))
     }
 
     fn machines(&mut self) -> impl Iterator<Item = &mut DictationHotkey> {
@@ -102,6 +111,7 @@ impl Hotkeys {
             .chain(self.second.as_mut())
             .chain(self.raw.as_mut())
             .chain(Some(&mut self.caps_lock))
+            .chain(Some(&mut self.middle_mouse))
             .chain(self.extra.iter_mut().flatten())
     }
 
@@ -111,6 +121,7 @@ impl Hotkeys {
             Shortcut::Second => self.second.as_ref(),
             Shortcut::Raw => self.raw.as_ref(),
             Shortcut::CapsLock => Some(&self.caps_lock),
+            Shortcut::MiddleMouse => Some(&self.middle_mouse),
             Shortcut::Extra(index) => self.extra.get(index).and_then(|machine| machine.as_ref()),
         }
     }
@@ -121,6 +132,7 @@ impl Hotkeys {
             Shortcut::Second => self.second.as_mut(),
             Shortcut::Raw => self.raw.as_mut(),
             Shortcut::CapsLock => Some(&mut self.caps_lock),
+            Shortcut::MiddleMouse => Some(&mut self.middle_mouse),
             Shortcut::Extra(index) => self
                 .extra
                 .get_mut(index)
@@ -270,6 +282,14 @@ impl Hotkeys {
         self.caps_lock.set_cancel(Some(
             crate::app_settings::HotkeyBinding::cancel_default().runtime(),
         ));
+        self.middle_mouse
+            .set_binding(crate::app_settings::RuntimeHotkey::default());
+        self.middle_mouse.set_double_tap_enabled(false);
+        self.middle_mouse.set_double_tap_only(false);
+        self.middle_mouse.set_toggle(true);
+        self.middle_mouse.set_cancel(Some(
+            crate::app_settings::HotkeyBinding::cancel_default().runtime(),
+        ));
         // Each extra row triggers its own way and keeps its own cancel key:
         // the configured one if Toggle mode arms it, else Escape.
         let extra_cancel = hotkeys
@@ -342,6 +362,45 @@ impl Hotkeys {
                 self.active = None;
             }
             self.caps_lock.suspend();
+            true
+        } else {
+            false
+        }
+    }
+
+    pub(super) fn middle_mouse_action(&mut self) -> Option<(Shortcut, HotkeyAction)> {
+        // A long mouse press finishes whichever shortcut owns the capture,
+        // including a keyboard lock. Keep its metadata until resolve_action.
+        if let Some(owner) = Shortcut::all().find(|shortcut| {
+            self.machine(*shortcut)
+                .is_some_and(DictationHotkey::is_recording)
+        }) {
+            let _ = self.machine_mut(owner)?.suspend();
+            self.disarm_pending_gestures();
+            return Some((owner, HotkeyAction::Finish));
+        }
+        if self.pending_gesture_besides(Shortcut::MiddleMouse) {
+            return None;
+        }
+        let action = self.middle_mouse.caps_lock_toggle()?;
+        if action == HotkeyAction::Start {
+            self.begin_capture(Shortcut::MiddleMouse, false);
+        }
+        Some((Shortcut::MiddleMouse, action))
+    }
+
+    /// Cancels this lab's capture when its switch turns off. Returns
+    /// whether one was recording so the caller can cancel it.
+    pub(super) fn stop_middle_mouse(&mut self) -> bool {
+        if self.middle_mouse.is_recording() {
+            if self
+                .active
+                .as_ref()
+                .is_some_and(|active| active.shortcut == Shortcut::MiddleMouse)
+            {
+                self.active = None;
+            }
+            self.middle_mouse.suspend();
             true
         } else {
             false
@@ -467,6 +526,14 @@ impl Hotkeys {
     ) -> Vec<(Shortcut, HotkeyAction)> {
         let mut actions = Vec::new();
         for shortcut in Shortcut::all() {
+            if shortcut == Shortcut::Dictation && self.middle_mouse.is_recording() {
+                if self.dictation.process_finish_trigger(event, at)
+                    && let Some(action) = self.middle_mouse.finish_hands_free()
+                {
+                    actions.push((Shortcut::MiddleMouse, action));
+                }
+                continue;
+            }
             let others_recording = self.recording_besides(shortcut);
             let Some(machine) = self.machine_mut(shortcut) else {
                 continue;
@@ -541,6 +608,187 @@ mod tests {
             DictationHotkey::new(base, true, option),
             DictationHotkey::new(base, false, RuntimeHotkey::default()),
         )
+    }
+
+    fn mouse_press(hotkeys: &mut Hotkeys) -> Option<HotkeyAction> {
+        hotkeys.middle_mouse_action().map(|(_, action)| action)
+    }
+
+    #[test]
+    fn middle_mouse_has_its_own_capture_owner_and_escape() {
+        let mut hotkeys = hotkeys();
+        hotkeys.middle_mouse.set_toggle(true);
+        hotkeys.middle_mouse.set_cancel(Some(
+            crate::app_settings::HotkeyBinding::cancel_default().runtime(),
+        ));
+        assert_eq!(mouse_press(&mut hotkeys), Some(HotkeyAction::Start));
+        assert_eq!(
+            hotkeys.active.as_ref().unwrap().shortcut,
+            Shortcut::MiddleMouse
+        );
+        assert_eq!(hotkeys.caps_lock_press(), None);
+        assert!(!hotkeys.stop_caps_lock());
+        assert_eq!(
+            hotkeys.recording_cancel(),
+            Some(crate::app_settings::HotkeyBinding::cancel_default().runtime())
+        );
+        assert_eq!(mouse_press(&mut hotkeys), Some(HotkeyAction::Finish));
+        assert!(!hotkeys.middle_mouse.is_recording());
+        assert_eq!(mouse_press(&mut hotkeys), Some(HotkeyAction::Start));
+        let actions = hotkeys.process(
+            InputEvent::Key {
+                code: 53,
+                down: true,
+                flags: 0,
+            },
+            CaptureInstant::now(),
+        );
+        assert!(actions.contains(&(Shortcut::MiddleMouse, HotkeyAction::CancelShortcut)));
+        assert!(!hotkeys.middle_mouse.is_recording());
+    }
+
+    #[test]
+    fn disabling_middle_mouse_cancels_only_its_capture() {
+        let mut hotkeys = hotkeys();
+        hotkeys.middle_mouse.set_toggle(true);
+        assert_eq!(mouse_press(&mut hotkeys), Some(HotkeyAction::Start));
+        assert!(hotkeys.stop_middle_mouse());
+        assert!(!hotkeys.stop_middle_mouse());
+        assert!(hotkeys.active.is_none());
+        assert_eq!(hotkeys.caps_lock_press(), Some(HotkeyAction::Start));
+        assert_eq!(
+            hotkeys.middle_mouse_action(),
+            Some((Shortcut::CapsLock, HotkeyAction::Finish))
+        );
+        assert!(!hotkeys.stop_middle_mouse());
+        assert!(!hotkeys.caps_lock.is_recording());
+    }
+
+    #[test]
+    fn dictation_hotkey_finishes_middle_mouse_capture_without_restarting_on_release() {
+        let mut hotkeys = hotkeys();
+        hotkeys.middle_mouse.set_toggle(true);
+        assert_eq!(mouse_press(&mut hotkeys), Some(HotkeyAction::Start));
+        let base = CaptureInstant::now();
+        let actions = hotkeys.process(
+            InputEvent::Flags(crate::app_settings::OPTION_KEY_MASK),
+            base,
+        );
+        assert_eq!(actions, vec![(Shortcut::MiddleMouse, HotkeyAction::Finish)]);
+        assert!(!hotkeys.any_recording());
+        assert!(
+            hotkeys
+                .process(
+                    InputEvent::Flags(0),
+                    base + std::time::Duration::from_millis(50)
+                )
+                .is_empty()
+        );
+        assert!(!hotkeys.any_recording());
+    }
+
+    #[test]
+    fn mouse_finish_takes_priority_over_a_pending_keyboard_gesture() {
+        let mut hotkeys = hotkeys();
+        hotkeys.middle_mouse.set_toggle(true);
+        assert_eq!(mouse_press(&mut hotkeys), Some(HotkeyAction::Start));
+        // A separate shortcut can be between the two taps of its gesture.
+        hotkeys.dictation.set_binding(RuntimeHotkey {
+            modifiers: Default::default(),
+            key_code: Some(49),
+        });
+        hotkeys.dictation.set_double_tap_enabled(true);
+        hotkeys.dictation.set_double_tap_only(true);
+        let base = CaptureInstant::now();
+        hotkeys.dictation.process(
+            InputEvent::Key {
+                code: 49,
+                down: true,
+                flags: 0,
+            },
+            base,
+        );
+        hotkeys.dictation.process(
+            InputEvent::Key {
+                code: 49,
+                down: false,
+                flags: 0,
+            },
+            base + std::time::Duration::from_millis(50),
+        );
+        assert!(hotkeys.dictation.has_pending_gesture());
+        assert_eq!(mouse_press(&mut hotkeys), Some(HotkeyAction::Finish));
+        assert!(!hotkeys.middle_mouse.is_recording());
+        assert!(!hotkeys.dictation.has_pending_gesture());
+    }
+
+    #[test]
+    fn middle_mouse_finishes_keyboard_capture_and_preserves_its_output_metadata() {
+        let mut hotkeys = hotkeys();
+        assert!(hotkeys.dictation.lock());
+        hotkeys.begin_capture(Shortcut::Dictation, true);
+        let (reply, received) = PrintReply::channel();
+        hotkeys.keep_print(reply);
+        let (owner, action) = hotkeys
+            .middle_mouse_action()
+            .expect("finish keyboard capture");
+        assert_eq!((owner, action), (Shortcut::Dictation, HotkeyAction::Finish));
+        assert!(!hotkeys.any_recording());
+        let (raw, print) = hotkeys.resolve_action(owner, action);
+        assert!(raw);
+        assert!(hotkeys.active.is_none());
+        print
+            .expect("keep transcript destination")
+            .send(PrintedTranscript::Text("Finished.".into()));
+        assert_eq!(
+            received.recv_timeout(Duration::from_millis(50)),
+            Ok(PrintedTranscript::Text("Finished.".into()))
+        );
+        assert!(
+            hotkeys
+                .process(InputEvent::Flags(0), CaptureInstant::now())
+                .is_empty()
+        );
+    }
+
+    #[test]
+    fn keyboard_finishes_mouse_capture_in_hold_toggle_and_double_tap_only_modes() {
+        for (toggle, double_tap_only) in [(false, false), (true, false), (false, true)] {
+            let mut hotkeys = hotkeys();
+            hotkeys.dictation.set_binding(RuntimeHotkey {
+                modifiers: Default::default(),
+                key_code: Some(49),
+            });
+            hotkeys.dictation.set_double_tap_enabled(true);
+            hotkeys.dictation.set_double_tap_only(double_tap_only);
+            hotkeys.dictation.set_toggle(toggle);
+            hotkeys.middle_mouse.set_toggle(true);
+            assert_eq!(mouse_press(&mut hotkeys), Some(HotkeyAction::Start));
+            let base = CaptureInstant::now();
+            let edge = |code, down| InputEvent::Key {
+                code,
+                down,
+                flags: 0,
+            };
+            assert!(hotkeys.process(edge(50, true), base).is_empty());
+            assert!(hotkeys.middle_mouse.is_recording());
+            assert!(
+                hotkeys
+                    .process(edge(50, false), base + Duration::from_millis(10))
+                    .is_empty()
+            );
+            assert_eq!(
+                hotkeys.process(edge(49, true), base + Duration::from_millis(20)),
+                vec![(Shortcut::MiddleMouse, HotkeyAction::Finish)]
+            );
+            assert!(!hotkeys.any_recording());
+            assert!(
+                hotkeys
+                    .process(edge(49, false), base + Duration::from_millis(30))
+                    .is_empty()
+            );
+            assert!(!hotkeys.any_recording());
+        }
     }
 
     /// The tap keeps the recording's own cancel key: Toggle's while a toggled

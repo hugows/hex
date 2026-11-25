@@ -4714,6 +4714,56 @@ fn escape_during_a_capture_ends_nothing() {
 }
 
 #[test]
+fn mouse_lab_opt_in_cancels_keyboard_locks_and_consumes_both_escape_edges() {
+    let now = capture_time();
+    let down = option_key(ESCAPE_KEY_CODE, true, NO_FLAGS);
+    let up = option_key(ESCAPE_KEY_CODE, false, NO_FLAGS);
+    for enabled in [false, true] {
+        for toggle in [false, true] {
+            let mut hotkey = test_hotkey(false, now);
+            hotkey.set_toggle(toggle);
+            hotkey.mouse_lab_escape = if enabled { || true } else { || false };
+            assert!(hotkey.lock());
+            let mut suppression = ShortcutSuppression::default();
+            assert_eq!(hotkey.takes_escape(now), enabled);
+            assert_eq!(
+                suppression.process_all(
+                    down,
+                    RuntimeHotkeys::default(),
+                    true,
+                    hotkey.takes_escape(now)
+                ),
+                enabled
+            );
+            assert_eq!(
+                hotkey.process(down, now),
+                enabled.then_some(HotkeyAction::CancelShortcut)
+            );
+            assert_eq!(hotkey.is_recording(), !enabled);
+            assert!(!hotkey.takes_escape(now) || !enabled);
+            assert_eq!(
+                suppression.process_all(
+                    up,
+                    RuntimeHotkeys::default(),
+                    true,
+                    hotkey.takes_escape(now)
+                ),
+                enabled
+            );
+            assert_eq!(hotkey.process(up, now), None);
+            if enabled {
+                assert!(!suppression.process_all(
+                    down,
+                    RuntimeHotkeys::default(),
+                    true,
+                    hotkey.takes_escape(now)
+                ));
+            }
+        }
+    }
+}
+
+#[test]
 fn escape_is_suppressed_only_while_hex_takes_it() {
     let mut suppression = ShortcutSuppression::default();
     let hotkeys = RuntimeHotkeys::default();

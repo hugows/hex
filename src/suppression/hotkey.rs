@@ -132,6 +132,14 @@ const DOUBLE_TAP_MODIFIERS: fn() -> bool = if cfg!(test) {
     crate::labs::double_tap_modifiers
 };
 
+/// The opt-in cancellation behavior; tests set it per machine, like the
+/// other Labs policies, rather than reading the person's saved settings.
+const MOUSE_LAB_ESCAPE: fn() -> bool = if cfg!(test) {
+    || false
+} else {
+    crate::labs::middle_mouse_dictation
+};
+
 /// Labs › Hold through other keys. Unit tests turn it on per machine, as they
 /// do Tap or hold.
 const HOLD_THROUGH_KEYS: fn() -> bool = if cfg!(test) {
@@ -237,6 +245,7 @@ pub struct DictationHotkey {
     /// modifier-only capture: a second or more in, the key is the app's, not a
     /// chord.
     hold_through_keys: fn() -> bool,
+    mouse_lab_escape: fn() -> bool,
     binding: RuntimeHotkey,
     /// Toggle's cancel shortcut; `None` in Hold mode.
     cancel: Option<RuntimeHotkey>,
@@ -288,6 +297,7 @@ impl DictationHotkey {
             tap_or_hold: TAP_OR_HOLD,
             double_tap_modifiers: DOUBLE_TAP_MODIFIERS,
             hold_through_keys: HOLD_THROUGH_KEYS,
+            mouse_lab_escape: MOUSE_LAB_ESCAPE,
             binding,
             cancel: None,
             ignore_before: None,
@@ -314,20 +324,24 @@ impl DictationHotkey {
             .flatten()
     }
 
-    /// Hold mode's cancel: Escape while the shortcut is still held, once the
-    /// hold threshold made the press Hex's. Earlier, Escape may belong to a
-    /// chord such as Option-Escape; a hands-free capture never takes it, as
-    /// Escape there may be meant for the app in front (#786).
-    fn escape_cancels_hold(&self, now: CaptureInstant) -> bool {
-        !self.toggle
-            && matches!(self.state, State::Recording { started_at, .. }
-                if now.duration_since(started_at) >= MINIMUM_HOLD_DURATION)
+    /// Preserve upstream Hold cancellation unless our mouse lab is enabled.
+    /// The opt-in also takes Escape for keyboard locks and Toggle captures;
+    /// provisional presses still keep their original chord grace.
+    fn escape_cancels_recording(&self, now: CaptureInstant) -> bool {
+        let mouse_lab = (self.mouse_lab_escape)();
+        match self.state {
+            State::Locked => mouse_lab,
+            State::Recording { started_at, .. } => {
+                (!self.toggle || mouse_lab)
+                    && now.duration_since(started_at) >= MINIMUM_HOLD_DURATION
+            }
+            _ => false,
+        }
     }
 
-    /// Whether the tap keeps Escape from the app in front at `now`: it
-    /// cancels this machine's held capture.
+    /// Whether the tap consumes Escape for this capture, independent of focus.
     pub fn takes_escape(&self, now: CaptureInstant) -> bool {
-        self.escape_cancels_hold(now)
+        self.escape_cancels_recording(now)
     }
 
     /// An Escape a recording machine saw and did nothing with, and why.
@@ -707,6 +721,27 @@ impl DictationHotkey {
         action
     }
 
+    /// Recognize this shortcut as the finishing press of a hands-free
+    /// recording owned by another input. Its activation mode must not require
+    /// starting a second recording first. Keep normal key tracking and chord
+    /// breaking, and leave cancellation to the actual recording owner.
+    pub(crate) fn process_finish_trigger(
+        &mut self,
+        event: InputEvent,
+        now: CaptureInstant,
+    ) -> bool {
+        if self.is_recording() {
+            return false;
+        }
+        let prior = std::mem::replace(&mut self.state, State::Locked);
+        if self.process(event, now) == Some(HotkeyAction::Finish) {
+            true
+        } else {
+            self.state = prior;
+            false
+        }
+    }
+
     /// A bare modifier passes through to other apps, so a hold reads to them
     /// as a tap on release (Raycast's Option-tap hotkey, for one). Once Hex
     /// owns the press (a hold past the threshold, a Toggle start past the
@@ -858,14 +893,8 @@ impl DictationHotkey {
             return Some(HotkeyAction::CancelShortcut);
         }
         if fresh_key_down && event.is_escape_down() {
-            if let State::Recording { started_at, .. } = self.state
-                && self.escape_cancels_hold(now)
-            {
-                tracing::info!(
-                    shortcut = "dictation",
-                    after_press_ms = signed_ms(now, started_at),
-                    "dictation cancelled by Escape while held"
-                );
+            if self.escape_cancels_recording(now) {
+                tracing::info!(shortcut = "dictation", "dictation cancelled by Escape");
                 self.state = State::Dirty;
                 return Some(HotkeyAction::CancelShortcut);
             }
