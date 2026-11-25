@@ -414,6 +414,7 @@ fn contributed_options_are_labs_toggles_off_by_default() {
     for row in [
         "lab-mouse-shortcuts",
         "lab-middle-mouse-dictation",
+        "lab-indicator-follows-mouse",
         "lab-pause-browser",
         "lab-keep-on-clipboard",
         "lab-signature",
@@ -445,6 +446,9 @@ fn contributed_options_are_labs_toggles_off_by_default() {
     tap(&mut rt, "lab-neutral-voice");
     assert!(rt.state.settings.labs.neutral_voice);
     assert!(rt.find("lab-share-shortcut").is_none(), "Windows only");
+    assert!(!rt.state.settings.labs.indicator_follows_mouse);
+    tap(&mut rt, "lab-indicator-follows-mouse");
+    assert!(rt.state.settings.labs.indicator_follows_mouse);
     assert!(!rt.state.settings.labs.middle_mouse_dictation);
     tap(&mut rt, "lab-middle-mouse-dictation");
     assert!(rt.state.settings.labs.middle_mouse_dictation);

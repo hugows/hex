@@ -796,6 +796,7 @@ fn rows(ui: &Ui) -> Vec<Row> {
             rows.push(row(Feature::PauseMenu, None));
             // macOS's app menu Quit Hex closes the window instead.
             // macOS's HUD reads the screen's notch from NSScreen.
+            rows.push(row(Feature::IndicatorFollowsMouse, Some(&MOUSE)));
             rows.push(row(Feature::NotchIndicator, Some(&WAVE)));
             // macOS's HUD reads its bottom gap from the saved setting.
             rows.push(row(Feature::HudHeight, Some(&PANEL)));
@@ -1095,6 +1096,7 @@ fn row_key(lab: Lab) -> &'static str {
         Feature::CapsLockDictation => "lab-caps-lock-dictation",
         Feature::GnomeClipboardRestore => "lab-gnome-clipboard-restore",
         Feature::TypedText => "lab-typed-text",
+        Feature::IndicatorFollowsMouse => "lab-indicator-follows-mouse",
         Feature::NotchIndicator => "lab-notch-indicator",
         Feature::GnomeMeetingCapsules => "lab-gnome-meeting-capsules",
         Feature::GnomeAnnotate => "lab-gnome-annotate",

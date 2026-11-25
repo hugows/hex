@@ -305,6 +305,12 @@ pub fn hide_menu_bar_icon() -> bool {
     feature_on(Feature::HideMenuBarIcon)
 }
 
+/// Keep the dictation HUD beside the pointer, on every placement update.
+#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
+pub fn indicator_follows_mouse() -> bool {
+    feature_on(Feature::IndicatorFollowsMouse)
+}
+
 /// At either visible indicator position, the HUD grows out of the notch on
 /// a screen that has one (macOS; read each time the HUD is placed).
 #[cfg_attr(not(target_os = "macos"), allow(dead_code))]

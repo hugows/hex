@@ -594,6 +594,17 @@
       "title": "Transform typed text"
     },
     {
+      "added": "2026-11-25",
+      "group": "dictation",
+      "groupTitle": "Dictation",
+      "id": "indicator-follows-mouse",
+      "oses": [
+        "macos"
+      ],
+      "summary": "Keep the dictation balloon beside the mouse pointer while recording and processing. Works with any dictation shortcut",
+      "title": "Indicator follows mouse"
+    },
+    {
       "added": "2026-11-03",
       "group": "dictation",
       "groupTitle": "Dictation",

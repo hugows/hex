@@ -264,6 +264,7 @@ Feature             Pane  Toggle (settings.json, hex settings)   On: what it doe
 │                                        calendar's own switch in the menu is unchanged; off, the row is exactly as before
 │                                        // checks: calendar_select_all_is_its_own_switch_and_macos_only (labs.rs);
 │                                        // the_select_all_calendars_lab_saves_every_calendar_at_once (rune_ui/tests/panes.rs)
+├── Indicator follows mouse no labs.indicator_follows_mouse (macOS) the dictation balloon tracks the pointer independently of the shortcut
 ├── Notch indicator no    labs.notch_indicator         (macOS) on a screen with a notch, the HUD widens the notch sideways in the Dynamic Island's compact style at either visible position: an orange mic and level bars, the macOS spinner, a green checkmark; Hidden still hides it, and flat screens keep the Top/Bottom setting
 ├── HUD height      no    labs.hud_height              (macOS) with the HUD position Bottom, the plate keeps labs.hud_bottom_gap points (0–400, 24 by
 │                                        default) above the Dock or the screen's bottom edge; a gap of 24 pt or less keeps the
@@ -3162,6 +3163,22 @@ no permission-granted keyboard test ran. The pause machine's checks run on
 Linux too, while the tap, secure-input, listener, and menu tests, and the
 neutral-keyboard rules, run only in macOS builds. The row renders only in macOS
 builds, so no golden changes.
+
+Indicator follows mouse (`indicator-follows-mouse`, macOS, off by default):
+Settings > Labs > Dictation offers its own switch, independent of Middle
+mouse dictation and all other shortcuts. While the dictation HUD is visible,
+it follows 20 pt below the pointer on its display, flips above near the
+bottom, and clamps the plate to that display's usable frame. Recording,
+processing and completion share the placement, and live text follows beside
+it. The existing click-through window never takes focus or clicks. Hidden
+still hides it; while on this placement takes precedence over Top/Bottom,
+Notch indicator, and HUD height. Turning it off restores those saved choices.
+The existing macOS HUD pump updates placement only while the indicator
+animates; this adds no input tap, microphone owner, or idle watcher.
+Checks: `hud_placement::tests::pointer_indicator_*` covers motion, edge
+flipping and clamping, offset displays, and global/local coordinates;
+the Labs UI checks cover an independent default-off toggle. Native pointer
+motion and crossing physical displays still need user verification.
 
 Notch indicator (`notch-indicator`, macOS only): for MacBooks with a
 notch, a recording indicator in the Dynamic Island's compact style that
